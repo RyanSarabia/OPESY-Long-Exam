@@ -39,6 +39,7 @@ struct queue
     int queueID;
     int priority;
     int timeQuantum;
+    ListNode *pCurr;
 };
 
 ListNode *
@@ -206,61 +207,6 @@ int countNodes(ListNode *cur)
     return count;
 }
 
-int countTimeNodes(TimeNode *cur)
-{
-    int count = 0;
-    while (cur != NULL)
-    {
-        count++;
-        cur = cur->pNext;
-    }
-    return count;
-}
-
-void printList(ListNode *node)
-{
-    while (node != NULL)
-    {
-        printf("%d \n", node->id);
-        node = node->pNext;
-    }
-    printf("\n");
-}
-
-void printTimeList(TimeNode *node)
-{
-    while (node != NULL)
-    {
-        printf("%d \n", node->start);
-        node = node->pNext;
-    }
-    printf("\n");
-}
-
-ListNode *getLowestExecution(ListNode *pId, int limit)
-{
-
-    if (pId == NULL)
-    {
-        return NULL;
-    }
-
-    ListNode *pLowest = pId;
-    ListNode *pCurr = pId->pNext;
-    while (pCurr && pCurr->arrival_time <= limit)
-    {
-
-        if (pLowest->execution_time > pCurr->execution_time)
-        {
-            pLowest = pCurr;
-        }
-
-        pCurr = pCurr->pNext;
-    }
-
-    return pLowest;
-}
-
 ListNode *moveFrontToBackQueue(ListNode *pFirst, int limit)
 {
     ListNode *pTemp;
@@ -405,8 +351,82 @@ int robin(ListNode *pId, int time_quantum)
     return total_waiting_time;
 }
 
-void mlfq(Queue priorityQueue[], ListNode *pId)
+void robin_copy(ListNode *pId, Queue currQueue)
 {
+    int total_waiting_time = 0;
+    int prev_end;
+    int curr_id;
+    int inside_time;
+    int time = 0;
+    int idleTime = 0;
+    ListNode *pCurr;
+    TimeNode *pCurrTime;
+
+    pCurr = pId;
+
+    while (countNodes(pId) > 0)
+    {
+
+        if ((idleTime = getIdleTime(pCurr, time)) > 0)
+        {
+            time += idleTime;
+        }
+
+        if (pCurr->pTime == NULL)
+        {
+            pCurr->pTime = createTimeNode(time, 0);
+            pCurrTime = pCurr->pTime;
+            pCurrTime->pNext = NULL;
+            pCurr->wait_time = time - pCurr->arrival_time;
+        }
+
+        else
+        {
+            pCurrTime = getLastTimeNode(pCurr->pTime);
+            prev_end = pCurrTime->end;
+            pCurrTime->pNext = createTimeNode(time, 0);
+            pCurrTime = pCurrTime->pNext;
+            pCurr->wait_time += time - prev_end;
+        }
+
+        total_waiting_time += pCurr->wait_time;
+        inside_time = 0;
+        curr_id = pCurr->id;
+
+        while (inside_time < currQueue.timeQuantum && pCurr != NULL && pCurr->id == curr_id)
+        {
+            time += 1;
+            inside_time += 1;
+            pCurr->execution_time -= 1;
+
+            if (pCurr->execution_time == 0)
+            {
+                pCurrTime->end = time;
+                pCurr->turnaround_time += pCurr->wait_time + (pCurrTime->end - pCurrTime->start);
+                display(pCurr);
+                pId = freeNode(pId, pCurr->id);
+                pCurr = pId;
+            }
+
+            else if (inside_time == currQueue.timeQuantum)
+            {
+                pCurrTime->end = time;
+
+                pId = moveFrontToBackQueue(pId, time);
+                pCurr = pId;
+            }
+        }
+    }
+}
+
+void addListNodeToQueue(Queue *currQueue, ListNode *pId)
+{
+    currQueue->pCurr = pId;
+}
+
+void mlfq(Queue priorityQueue[], ListNode *pId, int priorityBoost)
+{
+    addListNodeToQueue(&priorityQueue[0], pId);
 }
 
 void selectionSort(Queue priorityQueue[], int n)
@@ -572,6 +592,7 @@ int main()
     ListNode *pId = initializeListNode();
 
     i = 0;
+
     for (i = Y - 1; i >= 0; i--)
     {
         pTemp = createListNode(id[i], arrival_time[i], execution_time[i], io_length[i], io_interval[i], 0, 0);
@@ -580,7 +601,7 @@ int main()
 
     insertionSort(&pId);
 
-    mlfq(priorityQueues, pId);
+    mlfq(priorityQueues, pId, S);
 
     //printf("Average waiting time: %.2f\n\n", robin_time / (Y * 1.0));
 
