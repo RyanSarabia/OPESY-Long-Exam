@@ -84,17 +84,6 @@ ListNode *getLastNode(ListNode *cur)
     return cur;
 }
 
-// ListNode *getMidNode(ListNode *cur)
-// {
-//     int curCount = 1, mid = countNodes(cur) / 2;
-//     while (curCount < mid)
-//     {
-//         cur = cur->pNext;
-//         curCount++;
-//     }
-//     return cur;
-// }
-
 TimeNode *initializeTimeNode()
 {
     return NULL;
@@ -439,7 +428,7 @@ void selectionSort(Queue priorityQueue[], int n)
     {
         min_idx = i;
         for (j = i + 1; j < n; j++)
-            if (priorityQueue[j].queueID < priorityQueue[min_idx].priority)
+            if (priorityQueue[j].priority < priorityQueue[min_idx].priority)
                 min_idx = j;
 
         //swap(&arr[min_idx], &arr[i]);
