@@ -29,8 +29,19 @@ struct nodeTag
     int turnaround_time;
     int io_length;
     int io_interval;
+    int ready;
+    int time_allotment;
     TimeNode *pTime;
     ListNode *pNext;
+};
+
+typedef struct IONodeTag IONode;
+
+struct IONodeTag
+{
+    int fulfill_time;
+    ListNode *pProcess;
+    IONode *pNext;
 };
 
 typedef struct queue Queue;
@@ -48,7 +59,7 @@ initializeListNode()
     return NULL;
 }
 
-ListNode *createListNode(int id, int arrival_time, int execution_time, int io_length, int io_interval, int wait_time, int turnaround_time)
+ListNode *createListNode(int id, int arrival_time, int execution_time, int io_length, int io_interval, int ready)
 {
     ListNode *pTemp;
 
@@ -62,8 +73,10 @@ ListNode *createListNode(int id, int arrival_time, int execution_time, int io_le
     pTemp->execution_time = execution_time;
     pTemp->io_length = io_length;
     pTemp->io_interval = io_interval;
-    pTemp->wait_time = wait_time;
-    pTemp->turnaround_time = turnaround_time;
+    pTemp->ready = ready;
+    pTemp->wait_time = 0;
+    pTemp->turnaround_time = 0;
+    pTemp->time_allotment = 0;
     pTemp->pTime = NULL;
     pTemp->pNext = NULL;
 
@@ -82,72 +95,6 @@ ListNode *getLastNode(ListNode *cur)
     while (cur != NULL && cur->pNext != NULL)
         cur = cur->pNext;
     return cur;
-}
-
-TimeNode *initializeTimeNode()
-{
-    return NULL;
-}
-
-TimeNode *createTimeNode(int start, int end)
-{
-    TimeNode *pTemp;
-
-    if ((pTemp = (TimeNode *)malloc(sizeof(TimeNode *))) == NULL)
-    {
-        printf("Not enough memory.");
-        return NULL;
-    }
-    pTemp->start = start;
-    pTemp->end = end;
-    pTemp->pNext = NULL;
-    return pTemp;
-}
-
-TimeNode *addTimeNode(TimeNode *pFirst, TimeNode *pTemp)
-{
-
-    TimeNode *pCurr = pFirst;
-
-    while (pCurr->pNext)
-    {
-        pCurr = pCurr->pNext;
-    }
-
-    pCurr->pNext = pTemp;
-    return pFirst;
-}
-
-TimeNode *getLastTimeNode(TimeNode *cur)
-{
-    while (cur != NULL && cur->pNext != NULL)
-        cur = cur->pNext;
-    return cur;
-}
-
-void freeTimeList(TimeNode *pFirst)
-{
-    TimeNode *pCurr;
-
-    while (pFirst->pNext != NULL)
-    {
-        pCurr = pFirst;
-        pFirst = pFirst->pNext;
-        free(pCurr);
-    }
-}
-
-void freeList(ListNode *pFirst)
-{
-    ListNode *pCurr;
-
-    while (pFirst != NULL)
-    {
-        pCurr = pFirst;
-        pFirst = pFirst->pNext;
-        freeTimeList(pCurr->pTime);
-        free(pCurr);
-    }
 }
 
 ListNode *freeNode(ListNode *pFirst, int id)
@@ -183,17 +130,6 @@ ListNode *freeNode(ListNode *pFirst, int id)
         free(pCurr);
         return pFirst;
     }
-}
-
-int countNodes(ListNode *cur)
-{
-    int count = 0;
-    while (cur != NULL)
-    {
-        count++;
-        cur = cur->pNext;
-    }
-    return count;
 }
 
 ListNode *moveFrontToBackQueue(ListNode *pFirst, int limit)
@@ -239,6 +175,151 @@ ListNode *moveFrontToBackQueue(ListNode *pFirst, int limit)
     return pFirst;
 }
 
+TimeNode *initializeTimeNode()
+{
+    return NULL;
+}
+
+TimeNode *createTimeNode(int start, int end)
+{
+    TimeNode *pTemp;
+
+    if ((pTemp = (TimeNode *)malloc(sizeof(TimeNode))) == NULL)
+    {
+        printf("Not enough memory.");
+        return NULL;
+    }
+    pTemp->start = start;
+    pTemp->end = end;
+    pTemp->pNext = NULL;
+    return pTemp;
+}
+
+TimeNode *addTimeNode(TimeNode *pFirst, TimeNode *pTemp)
+{
+
+    TimeNode *pCurr = pFirst;
+
+    while (pCurr->pNext)
+    {
+        pCurr = pCurr->pNext;
+    }
+
+    pCurr->pNext = pTemp;
+    return pFirst;
+}
+
+TimeNode *getLastTimeNode(TimeNode *cur)
+{
+    while (cur != NULL && cur->pNext != NULL)
+        cur = cur->pNext;
+    return cur;
+}
+
+IONode *createIONode(int fulfill_time, ListNode *pProcess)
+{
+    IONode *pTemp;
+
+    if ((pTemp = (IONode *)malloc(sizeof(IONode))) == NULL)
+    {
+        printf("Not enough memory.");
+        return NULL;
+    }
+
+    pTemp->fulfill_time = fulfill_time;
+    pTemp->pProcess = pProcess;
+    pTemp->pNext = NULL;
+    return pTemp;
+}
+
+IONode *addIONode(IONode *pFirst, IONode *pTemp)
+{
+
+    IONode *pCurr = pFirst;
+
+    while (pCurr->pNext)
+    {
+        pCurr = pCurr->pNext;
+    }
+
+    pCurr->pNext = pTemp;
+    return pFirst;
+}
+
+IONode *processIO(IONode *pFirst, int curr_time)
+{
+
+    int isFront; //indicates whether current IONode is in front of list
+    IONode *pCurr;
+    IONode *pTemp;
+    ListNode *pProcess;
+
+    pCurr = pFirst;
+    isFront = 1;
+
+    while (pCurr != NULL)
+    {
+        if (pCurr->fulfill_time >= curr_time)
+        {
+
+            pProcess = pCurr->pProcess;
+            pProcess->ready = 1; //NOT SURE PA IF THIS IS ACTUALLY MODIFYING THE LISTNODE! NOTE THIS.
+
+            pTemp = pCurr;
+            pCurr = pCurr->pNext;
+
+            if (isFront)
+            {
+                pFirst = pCurr;
+            }
+
+            free(pTemp);
+        }
+
+        else
+        {
+            isFront = 0;
+            pCurr = pCurr->pNext;
+        }
+    }
+}
+
+void freeList(ListNode *pFirst)
+{
+    ListNode *pCurr;
+
+    while (pFirst != NULL)
+    {
+        pCurr = pFirst;
+        pFirst = pFirst->pNext;
+        freeTimeList(pCurr->pTime);
+        free(pCurr);
+    }
+}
+
+void freeTimeList(TimeNode *pFirst)
+{
+    TimeNode *pCurr;
+
+    while (pFirst->pNext != NULL)
+    {
+        pCurr = pFirst;
+        pFirst = pFirst->pNext;
+        free(pCurr);
+    }
+}
+
+int countNodes(ListNode *cur)
+{
+    int count = 0;
+    while (cur != NULL)
+    {
+        count++;
+        cur = cur->pNext;
+    }
+    return count;
+}
+
 int getIdleTime(ListNode *pCurr, int time)
 {
 
@@ -270,7 +351,7 @@ void display(ListNode *pId)
     printf("**********************\n\n");
 }
 
-int robin(ListNode *pId, int time_quantum)
+int robin(ListNode *pId, int time_quantum, int IO_interval)
 {
     int total_waiting_time = 0;
     int prev_end;
@@ -312,7 +393,7 @@ int robin(ListNode *pId, int time_quantum)
         inside_time = 0;
         curr_id = pCurr->id;
 
-        while (inside_time < time_quantum && pCurr != NULL && pCurr->id == curr_id)
+        while (inside_time < IO_interval && pCurr != NULL && pCurr->id == curr_id && pCurr->time_allotment < time_quantum)
         {
             time += 1;
             inside_time += 1;
@@ -416,6 +497,28 @@ void addListNodeToQueue(Queue *currQueue, ListNode *pId)
 void mlfq(Queue priorityQueue[], ListNode *pId, int priorityBoost)
 {
     addListNodeToQueue(&priorityQueue[0], pId);
+
+    //loop
+
+    //fix robin(?) account for prioritizing arritval time over process na bumalik from I/O
+
+    //if this node has IO burst check if sufficiently finished IO burst (check if curr time - end time > IO burst)
+    //OR another route would be to have the Listnode contain a "ready" field, tas it indicates if I/O is ready (or pag CPU burst it's always ready)
+    //IF IO BURST YES/READY OR NO BURSTS:
+    //robin
+
+    //if process reach time quantum
+    //move to lower queue
+
+    //else
+    //go to next process
+    //probably make a function here that checks all queues from high priority to low, then get corresponding process (if going the ready route, then check lang yung ready state ng mga nodes)
+
+    //if currtime > PRIORITY BOOST * interval_num
+    //priority boost
+    //probably make a function on this
+    //note that when not moving queues, time quantum for that node is not reset
+    //note that when process in IO mode, not part of PB (just check yung ready field)
 }
 
 void selectionSort(Queue priorityQueue[], int n)
@@ -584,7 +687,7 @@ int main()
 
     for (i = Y - 1; i >= 0; i--)
     {
-        pTemp = createListNode(id[i], arrival_time[i], execution_time[i], io_length[i], io_interval[i], 0, 0);
+        pTemp = createListNode(id[i], arrival_time[i], execution_time[i], io_length[i], io_interval[i], 1);
         pId = addListNode(pId, pTemp);
     }
 
