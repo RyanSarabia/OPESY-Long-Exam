@@ -496,6 +496,8 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
 
     addListNodeToQueue(priorityQueue + 0, pId);
 
+    pCurrList = (priorityQueue + 0)->pCurr;
+
     while (processing)
     {
         //fix robin(?) account for prioritizing arritval time over process na bumalik from I/O (oks na)
@@ -509,8 +511,14 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
 
         switch (robin_result)
         {
-        case 0: //completed all processes in current queue, check other queues
-            break;
+        case 0:
+        { //completed all processes in current queue, check other queues
+            int i;
+            for (i = curr_queue; i < num_queues; i++)
+            {
+            }
+        }
+        break;
 
         case 1: //time for priority boost
             boost(priorityQueue);
@@ -526,7 +534,9 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
         case 2: //idle time exists, check other queues
             break;
 
-        default: //current process has to move to lower queue
+        default:
+        { //current process has to move to lower queue
+        }
         }
 
         //check if all queues are empty, if empty, processing = 0;
