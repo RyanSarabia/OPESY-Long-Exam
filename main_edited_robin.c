@@ -132,7 +132,7 @@ ListNode *freeNode(ListNode *pFirst, int id)
     }
 }
 
-ListNode *moveFrontToBackQueue(ListNode *pFirst, int limit)
+ListNode *reorderFrontQueue(ListNode *pFirst, int IO_fulfill_time)
 {
     ListNode *pTemp;
     ListNode *pCurr;
@@ -144,7 +144,7 @@ ListNode *moveFrontToBackQueue(ListNode *pFirst, int limit)
         pCurr = pFirst;
         pFirst = pFirst->pNext;
 
-        while (pCurr->pNext != NULL && pCurr->pNext->arrival_time <= limit)
+        while (pCurr->pNext != NULL && pCurr->pNext->arrival_time <= IO_fulfill_time)
         {
             pCurr = pCurr->pNext;
             moveCount++;
@@ -332,6 +332,16 @@ int getIdleTime(ListNode *pCurr, int time)
         return 0;
 }
 
+void boost(Queue *priorityQueue)
+{
+
+    //go through each queue except highest queue.
+    // do the ff:
+    // 1. check if process is in IO mode (just check its "ready" state), if NOT then do not modify the node
+    // 2. reset time allotment to 0
+    // 3. move each node to list nung highest queue and sort it while doing that (movefronttoback na function?)
+}
+
 // Scheduling functions
 
 void display(ListNode *pId)
@@ -351,142 +361,121 @@ void display(ListNode *pId)
     printf("**********************\n\n");
 }
 
-int robin(ListNode *pId, int time_quantum, int IO_interval)
+int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_time, int time_quantum, int priorityBoost, int interval_num)
 {
-    int total_waiting_time = 0;
+    int *wait_time = total_waiting_time;
     int prev_end;
     int curr_id;
     int inside_time;
-    int time = 0;
+    int *time = curr_time;
     int idleTime = 0;
-    ListNode *pCurr;
+    int fulfill_time = 0;
+    IONode *pIONode;
+    ListNode *pCurr = *pId;
     TimeNode *pCurrTime;
 
-    pCurr = pId;
-
-    while (countNodes(pId) > 0)
+    // Return
+    // 0 -- finished all processes
+    // 1 -- priority boost
+    // 2 -- idle time > 0
+    // 3 -- process expended its time allotment
+    while (countNodes(*pId) > 0)
     {
-
-        if ((idleTime = getIdleTime(pCurr, time)) > 0)
+        if (*pIOList != NULL)
         {
-            time += idleTime;
+            processIO(*pIOList, curr_time);
         }
 
-        if (pCurr->pTime == NULL)
+        // if ((idleTime = getIdleTime(pCurr, time)) > 0)
+        // {
+        //     time += idleTime;
+        // }
+
+        if (pCurr->ready == 1)
         {
-            pCurr->pTime = createTimeNode(time, 0);
-            pCurrTime = pCurr->pTime;
-            pCurrTime->pNext = NULL;
-            pCurr->wait_time = time - pCurr->arrival_time;
+
+            if (pCurr->pTime == NULL)
+            {
+                pCurr->pTime = createTimeNode(*time, 0);
+                pCurrTime = pCurr->pTime;
+                pCurrTime->pNext = NULL;
+                pCurr->wait_time = *time - pCurr->arrival_time;
+            }
+
+            else
+            {
+                pCurrTime = getLastTimeNode(pCurr->pTime);
+                prev_end = pCurrTime->end;
+                pCurrTime->pNext = createTimeNode(*time, 0);
+                pCurrTime = pCurrTime->pNext;
+                pCurr->wait_time += *time - prev_end;
+            }
+
+            *wait_time += pCurr->wait_time;
+            inside_time = 0;
+            curr_id = pCurr->id;
+
+            while (inside_time < pCurr->io_interval && pCurr != NULL && pCurr->id == curr_id)
+            {
+                *time += 1;
+                inside_time += 1;
+                pCurr->execution_time -= 1;
+                pCurr->time_allotment += 1;
+
+                if (pCurr->execution_time == 0)
+                {
+                    pCurrTime->end = *time;
+                    pCurr->turnaround_time += pCurr->wait_time + (pCurrTime->end - pCurrTime->start);
+                    display(pCurr);
+                    *pId = freeNode(*pId, pCurr->id);
+                    pCurr = pId;
+                }
+
+                else if (pCurr->time_allotment == time_quantum)
+                {
+                    //Move down queue
+                    pCurrTime->end = *time;
+                    return 3;
+                }
+
+                else if (inside_time == pCurr->io_interval)
+                {
+                    pCurrTime->end = *time;
+                    int fulfill_time = pCurr->io_length + *time;
+
+                    //Create IO node
+                    pIONode = createIONode(fulfill_time, pCurr);
+                    *pIOList = addIONode(*pIOList, pIONode);
+
+                    pCurr->ready = 0;
+
+                    *pId = reorderFrontQueue(*pId, pIONode->fulfill_time);
+                    pCurr = *pId;
+                }
+            }
+
+            idleTime = getIdleTime(pCurr, *time);
+
+            if (idleTime > 0)
+            {
+                *time = *time - idleTime; //need to reset time para magstart again dun sa time after last process
+                return 2;
+            }
+
+            if (*time > priorityBoost * interval_num)
+            {
+                return 1;
+            }
         }
 
         else
         {
-            pCurrTime = getLastTimeNode(pCurr->pTime);
-            prev_end = pCurrTime->end;
-            pCurrTime->pNext = createTimeNode(time, 0);
-            pCurrTime = pCurrTime->pNext;
-            pCurr->wait_time += time - prev_end;
-        }
-
-        total_waiting_time += pCurr->wait_time;
-        inside_time = 0;
-        curr_id = pCurr->id;
-
-        while (inside_time < IO_interval && pCurr != NULL && pCurr->id == curr_id && pCurr->time_allotment < time_quantum)
-        {
-            time += 1;
-            inside_time += 1;
-            pCurr->execution_time -= 1;
-
-            if (pCurr->execution_time == 0)
-            {
-                pCurrTime->end = time;
-                pCurr->turnaround_time += pCurr->wait_time + (pCurrTime->end - pCurrTime->start);
-                display(pCurr);
-                pId = freeNode(pId, pCurr->id);
-                pCurr = pId;
-            }
-
-            else if (inside_time == time_quantum)
-            {
-                pCurrTime->end = time;
-
-                pId = moveFrontToBackQueue(pId, time);
-                pCurr = pId;
-            }
+            // parang di naman possible na hindi sya maging ready given this setup....
+            // it will only not be ready if there is idle time (already accounted for).
         }
     }
 
-    return total_waiting_time;
-}
-
-void robin_copy(ListNode *pId, Queue currQueue)
-{
-    int total_waiting_time = 0;
-    int prev_end;
-    int curr_id;
-    int inside_time;
-    int time = 0;
-    int idleTime = 0;
-    ListNode *pCurr;
-    TimeNode *pCurrTime;
-
-    pCurr = pId;
-
-    while (countNodes(pId) > 0)
-    {
-
-        if ((idleTime = getIdleTime(pCurr, time)) > 0)
-        {
-            time += idleTime;
-        }
-
-        if (pCurr->pTime == NULL)
-        {
-            pCurr->pTime = createTimeNode(time, 0);
-            pCurrTime = pCurr->pTime;
-            pCurrTime->pNext = NULL;
-            pCurr->wait_time = time - pCurr->arrival_time;
-        }
-
-        else
-        {
-            pCurrTime = getLastTimeNode(pCurr->pTime);
-            prev_end = pCurrTime->end;
-            pCurrTime->pNext = createTimeNode(time, 0);
-            pCurrTime = pCurrTime->pNext;
-            pCurr->wait_time += time - prev_end;
-        }
-
-        total_waiting_time += pCurr->wait_time;
-        inside_time = 0;
-        curr_id = pCurr->id;
-
-        while (inside_time < currQueue.timeQuantum && pCurr != NULL && pCurr->id == curr_id)
-        {
-            time += 1;
-            inside_time += 1;
-            pCurr->execution_time -= 1;
-
-            if (pCurr->execution_time == 0)
-            {
-                pCurrTime->end = time;
-                pCurr->turnaround_time += pCurr->wait_time + (pCurrTime->end - pCurrTime->start);
-                display(pCurr);
-                pId = freeNode(pId, pCurr->id);
-                pCurr = pId;
-            }
-
-            else if (inside_time == currQueue.timeQuantum)
-            {
-                pCurrTime->end = time;
-
-                pId = moveFrontToBackQueue(pId, time);
-                pCurr = pId;
-            }
-        }
-    }
+    return 0;
 }
 
 void addListNodeToQueue(Queue *currQueue, ListNode *pId)
@@ -494,31 +483,55 @@ void addListNodeToQueue(Queue *currQueue, ListNode *pId)
     currQueue->pCurr = pId;
 }
 
-void mlfq(Queue priorityQueue[], ListNode *pId, int priorityBoost)
+void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost)
 {
-    addListNodeToQueue(&priorityQueue[0], pId);
+    int processing = 1; //condition for continuing while loop
+    int curr_queue = 0;
+    int robin_result = 0;
+    int interval_num = 0;   //how many intervals of priority boost have passed
+    int curr_time = 0;      //pass as pointer to robin function
+    int wait_time = 0;      //pass as pointer to robin function
+    IONode *pIOList = NULL; //pass as pointer to robin function
+    ListNode *pCurrList = NULL;
 
-    //loop
+    addListNodeToQueue(priorityQueue + 0, pId);
 
-    //fix robin(?) account for prioritizing arritval time over process na bumalik from I/O
+    while (processing)
+    {
+        //fix robin(?) account for prioritizing arritval time over process na bumalik from I/O (oks na)
 
-    //if this node has IO burst check if sufficiently finished IO burst (check if curr time - end time > IO burst)
-    //OR another route would be to have the Listnode contain a "ready" field, tas it indicates if I/O is ready (or pag CPU burst it's always ready)
-    //IF IO BURST YES/READY OR NO BURSTS:
-    //robin
+        //if this node has IO burst check if sufficiently finished IO burst (check if curr time - end time > IO burst)
+        //OR another route would be to have the Listnode contain a "ready" field, tas it indicates if I/O is ready (or pag CPU burst it's always ready)
+        //IF IO BURST YES/READY OR NO BURSTS:
+        //robin
 
-    //if process reach time quantum
-    //move to lower queue
+        robin_result = robin(&pCurrList, &pIOList, &curr_time, &wait_time, (priorityQueue + curr_queue)->timeQuantum, priorityBoost, interval_num);
 
-    //else
-    //go to next process
-    //probably make a function here that checks all queues from high priority to low, then get corresponding process (if going the ready route, then check lang yung ready state ng mga nodes)
+        switch (robin_result)
+        {
+        case 0: //completed all processes in current queue, check other queues
+            break;
 
-    //if currtime > PRIORITY BOOST * interval_num
-    //priority boost
-    //probably make a function on this
-    //note that when not moving queues, time quantum for that node is not reset
-    //note that when process in IO mode, not part of PB (just check yung ready field)
+        case 1: //time for priority boost
+            boost(priorityQueue);
+
+            //if currtime > PRIORITY BOOST * interval_num
+            //priority boost
+            //probably make a function on this
+            //note that when not moving queues, time quantum for that node is not reset
+            //note that when process in IO mode, not part of PB (just check yung ready field)
+
+            break;
+
+        case 2: //idle time exists, check other queues
+            break;
+
+        default: //current process has to move to lower queue
+        }
+
+        //check if all queues are empty, if empty, processing = 0;
+        //make a function here that checks all queues from high priority to low, then get corresponding process list (if going the ready route, then check lang yung ready state ng mga nodes)
+    }
 }
 
 void selectionSort(Queue priorityQueue[], int n)
@@ -693,7 +706,7 @@ int main()
 
     insertionSort(&pId);
 
-    mlfq(priorityQueues, pId, S);
+    mlfq(priorityQueues, X, pId, S);
 
     //printf("Average waiting time: %.2f\n\n", robin_time / (Y * 1.0));
 
