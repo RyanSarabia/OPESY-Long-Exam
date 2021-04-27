@@ -97,6 +97,42 @@ ListNode *getLastNode(ListNode *cur)
     return cur;
 }
 
+void freeTimeList(TimeNode *pFirst)
+{
+    TimeNode *pCurr;
+
+    while (pFirst->pNext != NULL)
+    {
+        pCurr = pFirst;
+        pFirst = pFirst->pNext;
+        free(pCurr);
+    }
+}
+
+void freeList(ListNode *pFirst)
+{
+    ListNode *pCurr;
+
+    while (pFirst != NULL)
+    {
+        pCurr = pFirst;
+        pFirst = pFirst->pNext;
+        freeTimeList(pCurr->pTime);
+        free(pCurr);
+    }
+}
+
+int countNodes(ListNode *cur)
+{
+    int count = 0;
+    while (cur != NULL)
+    {
+        count++;
+        cur = cur->pNext;
+    }
+    return count;
+}
+
 ListNode *freeNode(ListNode *pFirst, int id)
 {
     ListNode *pCurr;
@@ -218,7 +254,31 @@ ListNode *reorderFrontQueue(ListNode *pFirst, int IO_fulfill_time)
     return pFirst;
 }
 
-ListNode *moveNodeToQueue(ListNode **pDest, ListNode *pID, int curr_time)
+ListNode *moveProcessToBack(ListNode *pFirst)
+{
+
+    ListNode *pCurr;
+    ListNode *pTemp;
+    pTemp = pFirst;
+    pCurr = pFirst;
+    if (pFirst->pNext == NULL)
+    {
+        return pFirst;
+    }
+    else
+    {
+        pFirst = pCurr->pNext;
+        while (pCurr->pNext != NULL)
+        {
+            pCurr = pCurr->pNext;
+        }
+        pCurr->pNext = pTemp;
+        pTemp->pNext = NULL;
+        return pFirst;
+    }
+}
+
+ListNode *moveNodeToQueue(ListNode **pDest, ListNode *pID, int curr_time, int case_value)
 {
     ListNode *pNext;
 
@@ -227,7 +287,21 @@ ListNode *moveNodeToQueue(ListNode **pDest, ListNode *pID, int curr_time)
 
     pID->time_allotment = 0; //not sure if nassave to... 90% sure
     *pDest = addListNode(*pDest, pID);
-    *pDest = reorderFrontArrival(*pDest, curr_time);
+
+    switch (case_value)
+    {
+    case 1:
+    { //For process boost
+        *pDest = reorderFrontArrival(*pDest, curr_time);
+    }
+    break;
+
+    case 2:
+    { //For adding to back of the queue
+        *pDest = moveProcessToBack(*pDest);
+    }
+    break;
+    }
 
     return pNext;
 }
@@ -341,42 +415,6 @@ IONode *processIO(IONode *pFirst, int curr_time)
     }
 }
 
-void freeList(ListNode *pFirst)
-{
-    ListNode *pCurr;
-
-    while (pFirst != NULL)
-    {
-        pCurr = pFirst;
-        pFirst = pFirst->pNext;
-        freeTimeList(pCurr->pTime);
-        free(pCurr);
-    }
-}
-
-void freeTimeList(TimeNode *pFirst)
-{
-    TimeNode *pCurr;
-
-    while (pFirst->pNext != NULL)
-    {
-        pCurr = pFirst;
-        pFirst = pFirst->pNext;
-        free(pCurr);
-    }
-}
-
-int countNodes(ListNode *cur)
-{
-    int count = 0;
-    while (cur != NULL)
-    {
-        count++;
-        cur = cur->pNext;
-    }
-    return count;
-}
-
 int getIdleTime(ListNode *pCurr, int time)
 {
 
@@ -399,8 +437,8 @@ void boost(Queue *priorityQueue, int num_queues, int curr_time)
     int isNodeFront = 1;
 
     pTop = priorityQueue->pCurr;
-
-    for (int i = 1; i < num_queues; i++)
+    int i;
+    for (i = 1; i < num_queues; i++)
     {
         pCurr = (priorityQueue + i)->pCurr;
 
@@ -409,7 +447,7 @@ void boost(Queue *priorityQueue, int num_queues, int curr_time)
 
             if (pCurr->ready)
             {
-                pTemp = moveNodeToQueue(&pTop, pCurr, curr_time);
+                pTemp = moveNodeToQueue(&pTop, pCurr, curr_time, 1); // case 1 for boost
 
                 if (isNodeFront)
                 {
@@ -598,9 +636,14 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
         {
         case 0:
         { //completed all processes in current queue, check other queues
-            int i;
-            for (i = curr_queue; i < num_queues; i++)
+            int i = 0;
+            while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
             {
+                i++;
+            }
+            if (i < num_queues)
+            {
+                curr_queue = i;
             }
         }
         break;
@@ -616,8 +659,11 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
 
             break;
 
-        case 2: //idle time exists, check other queues
-            break;
+        case 2:
+        { //idle time exists, check other queues
+            int i;
+        }
+        break;
 
         default: //current process has to move to lower queue
             ListNode *pCurr = pCurrList;
@@ -625,12 +671,22 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
             if (curr_queue != num_queues - 1) //means it's not on the last level
             {
                 ListNode *pDest = (priorityQueue + curr_queue + 1)->pCurr;
-                ListNode *pNext = moveNodeToQueue(&pDest, pCurr, curr_time);
+                ListNode *pNext = moveNodeToQueue(&pDest, pCurr, curr_time, 2);
                 (priorityQueue + curr_queue)->pCurr = pNext;
             }
         }
 
         //check if all queues are empty, if empty, processing = 0;
+        int i = 0;
+        while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
+        {
+            i++;
+        }
+        if (i == num_queues)
+        {
+            processing = 0;
+        }
+
         //make a function here that checks all queues from high priority to low, then get corresponding process list (if going the ready route, then check lang yung ready state ng mga nodes)
     }
 }
