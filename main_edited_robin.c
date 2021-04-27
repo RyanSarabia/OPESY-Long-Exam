@@ -132,6 +132,49 @@ ListNode *freeNode(ListNode *pFirst, int id)
     }
 }
 
+ListNode *reorderFrontArrival(ListNode *pFirst, int limit)
+{
+    ListNode *pTemp;
+    ListNode *pCurr;
+    int moveCount = 0;
+
+    if (pFirst->pNext != NULL)
+    {
+        pTemp = pFirst;
+        pCurr = pFirst;
+        pFirst = pFirst->pNext;
+
+        while (pCurr->pNext != NULL && pCurr->pNext->arrival_time <= limit)
+        {
+            pCurr = pCurr->pNext;
+            moveCount++;
+        }
+
+        if (pCurr->pNext == NULL)
+        {
+            pTemp->pNext = NULL;
+            pCurr->pNext = pTemp;
+        }
+
+        else if (moveCount == 0)
+        {
+            pFirst = pTemp;
+        }
+
+        else
+        {
+            pTemp->pNext = pCurr->pNext;
+            pCurr->pNext = pTemp;
+        }
+    }
+
+    else
+    {
+        pFirst = pFirst;
+    }
+    return pFirst;
+}
+
 ListNode *reorderFrontQueue(ListNode *pFirst, int IO_fulfill_time)
 {
     ListNode *pTemp;
@@ -173,6 +216,20 @@ ListNode *reorderFrontQueue(ListNode *pFirst, int IO_fulfill_time)
         pFirst = pFirst;
     }
     return pFirst;
+}
+
+ListNode *moveNodeToQueue(ListNode **pDest, ListNode *pID, int curr_time)
+{
+    ListNode *pNext;
+
+    pNext = pID->pNext;
+    pID->pNext = NULL;
+
+    pID->time_allotment = 0; //not sure if nassave to... 90% sure
+    *pDest = addListNode(*pDest, pID);
+    *pDest = reorderFrontArrival(*pDest, curr_time);
+
+    return pNext;
 }
 
 TimeNode *initializeTimeNode()
@@ -332,8 +389,41 @@ int getIdleTime(ListNode *pCurr, int time)
         return 0;
 }
 
-void boost(Queue *priorityQueue)
+//Sorts top queue based on arrival time
+void boost(Queue *priorityQueue, int num_queues, int curr_time)
 {
+    ListNode *pCurr;
+    ListNode *pFirst;
+    ListNode *pTemp;
+    ListNode *pTop;
+    int isNodeFront = 1;
+
+    pTop = priorityQueue->pCurr;
+
+    for (int i = 1; i < num_queues; i++)
+    {
+        pCurr = (priorityQueue + i)->pCurr;
+
+        while (pCurr != NULL)
+        {
+
+            if (pCurr->ready)
+            {
+                pTemp = moveNodeToQueue(&pTop, pCurr, curr_time);
+
+                if (isNodeFront)
+                {
+                    (priorityQueue + i)->pCurr = pTemp;
+                }
+            }
+
+            else
+            {
+                isNodeFront = 0;
+                pCurr = pCurr->pNext;
+            }
+        }
+    }
 
     //go through each queue except highest queue.
     // do the ff:
@@ -500,11 +590,6 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
     {
         //fix robin(?) account for prioritizing arritval time over process na bumalik from I/O (oks na)
 
-        //if this node has IO burst check if sufficiently finished IO burst (check if curr time - end time > IO burst)
-        //OR another route would be to have the Listnode contain a "ready" field, tas it indicates if I/O is ready (or pag CPU burst it's always ready)
-        //IF IO BURST YES/READY OR NO BURSTS:
-        //robin
-
         robin_result = robin(&pCurrList, &pIOList, &curr_time, &wait_time, (priorityQueue + curr_queue)->timeQuantum, priorityBoost, interval_num);
 
         switch (robin_result)
@@ -513,7 +598,7 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
             break;
 
         case 1: //time for priority boost
-            boost(priorityQueue);
+            boost(priorityQueue, num_queues, curr_time);
 
             //if currtime > PRIORITY BOOST * interval_num
             //priority boost
@@ -527,6 +612,14 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
             break;
 
         default: //current process has to move to lower queue
+            ListNode *pCurr = pCurrList;
+
+            if (curr_queue != num_queues - 1) //means it's not on the last level
+            {
+                ListNode *pDest = (priorityQueue + curr_queue + 1)->pCurr;
+                ListNode *pNext = moveNodeToQueue(&pDest, pCurr, curr_time);
+                (priorityQueue + curr_queue)->pCurr = pNext;
+            }
         }
 
         //check if all queues are empty, if empty, processing = 0;
