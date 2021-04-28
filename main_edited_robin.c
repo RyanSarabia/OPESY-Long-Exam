@@ -653,7 +653,7 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
             }
         }
     }
-    while (pIOCurr != NULL) //Check IO kung may magsstart before arrival ng next process
+    while (pIOCurr != NULL) //Find IO with shortest fulfill_time
     {
         if (shortest_fulfill == -1)
         {
