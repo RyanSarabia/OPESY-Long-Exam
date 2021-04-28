@@ -555,7 +555,7 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
                     pCurr->turnaround_time += pCurr->wait_time + (pCurrTime->end - pCurrTime->start);
                     display(pCurr);
                     *pId = freeNode(*pId, pCurr->id);
-                    pCurr = pId;
+                    pCurr = *pId;
                 }
 
                 else if (pCurr->time_allotment == time_quantum)
