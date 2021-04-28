@@ -636,7 +636,7 @@ int findProcessQueue(Queue *priorityQueue, ListNode *pId, int num_queues)
 int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, IONode *pIOList, int num_queues, int *curr_time)
 {
     int i, idle_time, shortest_fulfill = -1, curr_queue_temp;
-    int current_shortest_queue, queue_checked;
+    int current_shortest_queue = -1, queue_checked;
     ListNode *pCurr = NULL, *pTemp;
     IONode *pIOCurr = pIOList;
 
@@ -690,35 +690,44 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
     //Check if the next IO is shorter than arrival time of next process
     if ((priorityQueue + 0)->pCurr != NULL)
     {
-        if (current_shortest_queue == 0)
-        { //if shortest IO is at highest priority queue
-            if (shortest_fulfill <= (priorityQueue + 0)->pCurr->arrival_time)
-            { //Shortest fulfill_time is nearer than shortest arrival_time
-                *pCurrList = ((priorityQueue) + 0)->pCurr;
-                *curr_queue = 0;
-                *curr_time = shortest_fulfill; //skip to shortest fulfill_time
+        if (pCurr != NULL && current_shortest_queue != -1)
+        { //Check if there are processes in IO
+            if (current_shortest_queue == 0)
+            { //if shortest IO is at highest priority queue
+                if (shortest_fulfill <= (priorityQueue + 0)->pCurr->arrival_time)
+                { //Shortest fulfill_time is nearer than shortest arrival_time
+                    *pCurrList = ((priorityQueue) + 0)->pCurr;
+                    *curr_queue = 0;
+                    *curr_time = shortest_fulfill; //skip to shortest fulfill_time
+                }
+                else
+                {
+                    *pCurrList = ((priorityQueue) + 0)->pCurr;
+                    *curr_queue = 0;
+                    *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
+                }
             }
             else
             {
-                *pCurrList = ((priorityQueue) + 0)->pCurr;
-                *curr_queue = 0;
-                *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
+                if (shortest_fulfill < (priorityQueue + 0)->pCurr->arrival_time) //IO in lower queues is nearer than shortest process arrival in top queue
+                {
+                    *pCurrList = ((priorityQueue) + current_shortest_queue)->pCurr;
+                    *curr_queue = current_shortest_queue;
+                    *curr_time = shortest_fulfill; //skip to shortest fulfill_time
+                }
+                else
+                {
+                    *pCurrList = ((priorityQueue) + 0)->pCurr;
+                    *curr_queue = 0;
+                    *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
+                }
             }
         }
         else
         {
-            if (shortest_fulfill < (priorityQueue + 0)->pCurr->arrival_time) //IO in lower queues is nearer than shortest process arrival in top queue
-            {
-                *pCurrList = ((priorityQueue) + current_shortest_queue)->pCurr;
-                *curr_queue = current_shortest_queue;
-                *curr_time = shortest_fulfill; //skip to shortest fulfill_time
-            }
-            else
-            {
-                *pCurrList = ((priorityQueue) + 0)->pCurr;
-                *curr_queue = 0;
-                *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
-            }
+            *pCurrList = ((priorityQueue) + 0)->pCurr;
+            *curr_queue = 0;
+            *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
         }
     }
 
@@ -777,15 +786,6 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
 
         case 2:
         { //idle time exists, check other queues
-            int i = 0;
-            while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
-            {
-                i++;
-            }
-            if (i < num_queues)
-            {
-                curr_queue = i;
-            };
         }
         break;
 
