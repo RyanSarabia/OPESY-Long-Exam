@@ -687,6 +687,8 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
         pIOCurr = pIOCurr->pNext;
     }
 
+    //Check if he next IO is shorter than arrival time of next process
+
     // if (pCurr == NULL)
     // { //There are
     //     if ((priorityQueue + 0)->pCurr != NULL)
