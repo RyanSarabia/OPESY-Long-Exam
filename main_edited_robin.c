@@ -636,6 +636,7 @@ int findProcessQueue(Queue *priorityQueue, ListNode *pId, int num_queues)
 int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, IONode *pIOList, int num_queues, int *curr_time)
 {
     int i, idle_time, shortest_fulfill = -1, curr_queue_temp;
+    int current_shortest_queue, queue_checked;
     ListNode *pCurr = NULL, *pTemp;
     IONode *pIOCurr = pIOList;
 
@@ -658,6 +659,7 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
         {
             shortest_fulfill = pIOCurr->fulfill_time;
             pCurr = pIOCurr->pProcess;
+            current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
         }
         else
         {
@@ -665,17 +667,18 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
             {
                 shortest_fulfill = pIOCurr->fulfill_time;
                 pCurr = pIOCurr->pProcess;
+                current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
             }
             else if (pIOCurr->fulfill_time == shortest_fulfill)
             {
                 //check for process in higher priority queue
-                int current_shortest_queue, queue_checked;
 
                 current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
                 queue_checked = findProcessQueue(priorityQueue, pIOCurr->pProcess, num_queues);
 
                 if (queue_checked < current_shortest_queue)
                 {
+                    current_shortest_queue = queue_checked;
                     shortest_fulfill = pIOCurr->fulfill_time;
                     pCurr = pIOCurr->pProcess;
                 }
