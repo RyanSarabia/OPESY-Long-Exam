@@ -687,19 +687,40 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
         pIOCurr = pIOCurr->pNext;
     }
 
-    //Check if he next IO is shorter than arrival time of next process
-
-    // if (pCurr == NULL)
-    // { //There are
-    //     if ((priorityQueue + 0)->pCurr != NULL)
-    //     {
-    //         curr_queue = 0;
-    //         *pCurrList = (priorityQueue + 0)->pCurr;
-    //         idle_time = getIdleTime((priorityQueue + 0)->pCurr, *curr_time);
-
-    //         return 0;
-    //     }
-    // }
+    //Check if the next IO is shorter than arrival time of next process
+    if ((priorityQueue + 0)->pCurr != NULL)
+    {
+        if (current_shortest_queue == 0)
+        { //if shortest IO is at highest priority queue
+            if (shortest_fulfill <= (priorityQueue + 0)->pCurr->arrival_time)
+            { //Shortest fulfill_time is nearer than shortest arrival_time
+                *pCurrList = ((priorityQueue) + 0)->pCurr;
+                *curr_queue = 0;
+                *curr_time = shortest_fulfill; //skip to shortest fulfill_time
+            }
+            else
+            {
+                *pCurrList = ((priorityQueue) + 0)->pCurr;
+                *curr_queue = 0;
+                *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
+            }
+        }
+        else
+        {
+            if (shortest_fulfill < (priorityQueue + 0)->pCurr->arrival_time) //IO in lower queues is nearer than shortest process arrival in top queue
+            {
+                *pCurrList = ((priorityQueue) + current_shortest_queue)->pCurr;
+                *curr_queue = current_shortest_queue;
+                *curr_time = shortest_fulfill; //skip to shortest fulfill_time
+            }
+            else
+            {
+                *pCurrList = ((priorityQueue) + 0)->pCurr;
+                *curr_queue = 0;
+                *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
+            }
+        }
+    }
 
     // all queues are empty
     return 0;
