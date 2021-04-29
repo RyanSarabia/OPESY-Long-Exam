@@ -510,7 +510,7 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
     {
         if (*pIOList != NULL)
         {
-            *pIOList = processIO(*pIOList, curr_time);
+            *pIOList = processIO(*pIOList, *curr_time);
         }
 
         // if ((idleTime = getIdleTime(pCurr, time)) > 0)
@@ -633,18 +633,18 @@ int findProcessQueue(Queue *priorityQueue, ListNode *pId, int num_queues)
     return 0;
 }
 
-int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, IONode *pIOList, int num_queues, int *curr_time)
+int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, IONode **pIOList, int num_queues, int *curr_time)
 {
     int i, idle_time, shortest_fulfill = -1, curr_queue_temp;
     int current_shortest_queue = -1, queue_checked;
     ListNode *pCurr = NULL, *pTemp;
-    IONode *pIOCurr = pIOList;
+    IONode *pIOCurr = *pIOList;
 
     for (i = 0; i < num_queues; i++)
     {
         if (((priorityQueue) + i)->pCurr->ready == 1)
         { //check if ready
-            if (((priorityQueue) + i)->pCurr->arrival_time <= curr_time)
+            if (((priorityQueue) + i)->pCurr->arrival_time <= *curr_time)
             { //check if process has arrived
 
                 *pCurrList = ((priorityQueue) + i)->pCurr; //set pCurrList and curr_queue to highest priority queue with arrived process
@@ -789,7 +789,7 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
         }
         break;
 
-        default: //current process has to move to lower queue
+        default:{ //current process has to move to lower queue
             ListNode *pCurr = pCurrList;
 
             if (curr_queue != num_queues - 1) //means it's not on the last level
@@ -798,6 +798,7 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
                 ListNode *pNext = moveNodeToQueue(&pDest, pCurr, curr_time, 2);
                 (priorityQueue + curr_queue)->pCurr = pNext;
             }
+        }
         }
 
         //check if all queues are empty, if empty, processing = 0;
