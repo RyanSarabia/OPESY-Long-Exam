@@ -1138,8 +1138,6 @@ void insertionSort(ListNode **head)
     // node to sorted
     while (a)
     {
-        if (s != NULL)
-            printf("S ARRIVAL: %d\n", s->arrival_time);
         // Store next for next iteration
         ListNode *next = a->pNext;
         if (s == NULL || s->arrival_time > a->arrival_time)
