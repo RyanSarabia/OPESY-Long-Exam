@@ -311,6 +311,8 @@ ListNode *moveNodeToQueue(ListNode **pDest, ListNode *pID, int curr_time, int ca
     }
     break;
     }
+    if (pNext != NULL)
+        printf("PNEXT: %d\n", pNext->id);
 
     return pNext;
 }
@@ -612,7 +614,6 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
             // it will only not be ready if there is idle time (already accounted for).
         }
     }
-
     return 0;
 }
 
@@ -654,6 +655,7 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
 
     for (i = 0; i < num_queues; i++)
     {
+
         if ((priorityQueue + i)->pCurr != NULL)
         {
             if (((priorityQueue) + i)->pCurr->ready == 1)
@@ -755,7 +757,7 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
     }
 
     // all queues are empty
-    return 0;
+    return -1;
 }
 
 void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost)
@@ -784,15 +786,15 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
         {
         case 0:
         { //completed all processes in current queue, check other queues
-            int i = 0;
-            while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
-            {
-                i++;
-            }
-            if (i < num_queues)
-            {
-                curr_queue = i;
-            }
+            // int i = 0;
+            // while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
+            // {
+            //     i++;
+            // }
+            // if (i < num_queues)
+            // {
+            //     curr_queue = i;
+            // }
         }
         break;
 
@@ -820,24 +822,35 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
             {
                 ListNode *pDest = (priorityQueue + curr_queue + 1)->pCurr;
                 ListNode *pNext = moveNodeToQueue(&pDest, pCurr, curr_time, 2);
+                //addListNodeToQueue((priorityQueue + curr_queue + 1), pDest);
                 (priorityQueue + curr_queue)->pCurr = pNext;
+                // if ((priorityQueue + curr_queue + 1)->pCurr != NULL)
+                //     printf("(priorityQueue + curr_queue + 1)->pCurr = %d\n", (priorityQueue + curr_queue + 1)->pCurr->id);
+                // if ((priorityQueue + curr_queue)->pCurr != NULL)
+                //     printf("(priorityQueue + curr_queue)->pCurr = %d\n", (priorityQueue + curr_queue)->pCurr->id);
             }
         }
         }
 
         //check if all queues are empty, if empty, processing = 0;
-        int i = 0;
-        while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
-        {
-            i++;
-        }
-        if (i == num_queues)
-        {
-            processing = 0;
-        }
+        // int i = 0;
+        // while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
+        // {
+        //     i++;
+        // }
+        // if (i == num_queues)
+        // {
+        //     processing = 0;
+        // }
 
         //make a function here that checks all queues from high priority to low, then get corresponding process list (if going the ready route, then check lang yung ready state ng mga nodes)
         check_queue_return = checkQueues(priorityQueue, &pCurrList, &curr_queue, &pIOList, num_queues, &curr_time);
+        if (check_queue_return == -1)
+        {
+            processing = 0;
+        }
+        // printf("pCurrList: %d\n", pCurrList->id);
+        // printf("CURRQUEUE: %d\n", curr_queue);
     }
 }
 
