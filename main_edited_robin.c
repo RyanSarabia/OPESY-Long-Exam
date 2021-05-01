@@ -31,6 +31,7 @@ struct nodeTag
     int io_interval;
     int ready;
     int time_allotment;
+    int queue;
     TimeNode *pTime;
     ListNode *pNext;
 };
@@ -73,6 +74,7 @@ ListNode *createListNode(int id, int arrival_time, int execution_time, int io_le
     pTemp->io_length = io_length;
     pTemp->io_interval = io_interval;
     pTemp->ready = ready;
+    pTemp->queue = 0;
     pTemp->wait_time = 0;
     pTemp->turnaround_time = 0;
     pTemp->time_allotment = 0;
@@ -167,48 +169,48 @@ ListNode *freeNode(ListNode *pFirst, int id)
     }
 }
 
-ListNode *reorderFrontArrival(ListNode *pFirst, int limit)
-{
-    ListNode *pTemp;
-    ListNode *pCurr;
-    int moveCount = 0;
+// ListNode *reorderFrontArrival(ListNode *pFirst, int limit)
+// {
+//     ListNode *pTemp;
+//     ListNode *pCurr;
+//     int moveCount = 0;
 
-    if (pFirst->pNext != NULL)
-    {
-        pTemp = pFirst;
-        pCurr = pFirst;
-        pFirst = pFirst->pNext;
+//     if (pFirst->pNext != NULL)
+//     {
+//         pTemp = pFirst;
+//         pCurr = pFirst;
+//         pFirst = pFirst->pNext;
 
-        while (pCurr->pNext != NULL && pCurr->pNext->arrival_time <= limit)
-        {
-            pCurr = pCurr->pNext;
-            moveCount++;
-        }
+//         while (pCurr->pNext != NULL && pCurr->pNext->arrival_time <= limit)
+//         {
+//             pCurr = pCurr->pNext;
+//             moveCount++;
+//         }
 
-        if (pCurr->pNext == NULL)
-        {
-            pTemp->pNext = NULL;
-            pCurr->pNext = pTemp;
-        }
+//         if (pCurr->pNext == NULL)
+//         {
+//             pTemp->pNext = NULL;
+//             pCurr->pNext = pTemp;
+//         }
 
-        else if (moveCount == 0)
-        {
-            pFirst = pTemp;
-        }
+//         else if (moveCount == 0)
+//         {
+//             pFirst = pTemp;
+//         }
 
-        else
-        {
-            pTemp->pNext = pCurr->pNext;
-            pCurr->pNext = pTemp;
-        }
-    }
+//         else
+//         {
+//             pTemp->pNext = pCurr->pNext;
+//             pCurr->pNext = pTemp;
+//         }
+//     }
 
-    else
-    {
-        pFirst = pFirst;
-    }
-    return pFirst;
-}
+//     else
+//     {
+//         pFirst = pFirst;
+//     }
+//     return pFirst;
+// }
 
 ListNode *reorderFrontQueue(ListNode *pFirst, int IO_fulfill_time)
 {
@@ -260,6 +262,7 @@ ListNode *moveProcessToBack(ListNode *pFirst)
     ListNode *pTemp;
     pTemp = pFirst;
     pCurr = pFirst;
+
     if (pFirst->pNext == NULL)
     {
         return pFirst;
@@ -285,13 +288,16 @@ ListNode *moveNodeToQueue(ListNode **pDest, ListNode *pID, int curr_time, int ca
     pID->pNext = NULL;
 
     pID->time_allotment = 0; //not sure if nassave to... 90% sure
+
+    pID->queue = (*pDest)->queue;
     *pDest = addListNode(*pDest, pID);
 
     switch (case_value)
     {
     case 1:
     { //For process boost
-        *pDest = reorderFrontArrival(*pDest, curr_time);
+        // *pDest = reorderFrontArrival(*pDest, curr_time);
+        *pDest = moveProcessToBack(*pDest);
     }
     break;
 
@@ -364,15 +370,8 @@ IONode *createIONode(int fulfill_time, ListNode *pProcess)
 
 IONode *addIONode(IONode *pFirst, IONode *pTemp)
 {
-
-    IONode *pCurr = pFirst;
-
-    while (pCurr->pNext)
-    {
-        pCurr = pCurr->pNext;
-    }
-
-    pCurr->pNext = pTemp;
+    pTemp->pNext = pFirst;
+    pFirst = pTemp;
     return pFirst;
 }
 
@@ -416,7 +415,6 @@ IONode *processIO(IONode *pFirst, int curr_time)
 
 int getIdleTime(ListNode *pCurr, int time)
 {
-
     if (pCurr->arrival_time > time)
     {
         return pCurr->arrival_time - time;
@@ -436,31 +434,60 @@ void boost(Queue *priorityQueue, int num_queues, int curr_time)
     int isNodeFront = 1;
 
     pTop = priorityQueue->pCurr;
+
+    printf("\n************ \n");
+    printf("INSIDE BOOST\n\n");
+
     int i;
     for (i = 1; i < num_queues; i++)
     {
+        printf("Current Queue: %d\n", i);
         pCurr = (priorityQueue + i)->pCurr;
 
         while (pCurr != NULL)
         {
 
+            printf("Current process to check: P%d\n", pCurr->id);
+
             if (pCurr->ready)
             {
-                pTemp = moveNodeToQueue(&pTop, pCurr, curr_time, 1); // case 1 for boost
-
-                if (isNodeFront)
+                if (pTop == NULL)
                 {
-                    (priorityQueue + i)->pCurr = pTemp;
+                    pTemp = pCurr->pNext;
+                    pTop = pCurr;
+                    pTop->queue = 0;
+                    pTop->time_allotment = 0;
+                    pTop->pNext = NULL;
+                    pCurr = pTemp;
+                    continue;
+                }
+
+                else
+                {
+                    printf("Current process to be moved: P%d\n", pCurr->id);
+
+                    pTemp = moveNodeToQueue(&pTop, pCurr, curr_time, 1); // case 1 for boost
+
+                    if (isNodeFront)
+                    {
+                        (priorityQueue + i)->pCurr = pTemp;
+                    }
                 }
             }
 
             else
             {
                 isNodeFront = 0;
-                pCurr = pCurr->pNext;
             }
+
+            pCurr = pTemp;
         }
     }
+
+    priorityQueue->pCurr = pTop;
+
+    printf("\n\nDONE WITH BOOST\n");
+    printf("************ \n");
 
     //go through each queue except highest queue.
     // do the ff:
@@ -488,7 +515,7 @@ void display(ListNode *pId)
     printf("**********************\n\n");
 }
 
-int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_time, int time_quantum, int priorityBoost, int interval_num)
+int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_time, int time_quantum, int priorityBoost, int interval_num, int next_priority_time)
 {
     int *wait_time = total_waiting_time;
     int prev_end;
@@ -501,26 +528,27 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
     ListNode *pCurr = *pId;
     TimeNode *pCurrTime;
 
+    printf("TIME QUANTUM: %d\n", time_quantum);
+
     // Return
     // 0 -- finished all processes
     // 1 -- priority boost
     // 2 -- idle time > 0
-    // 3 -- process expended its time allotment
+    // 3 -- move to a more prioritized process
+    // 4 -- priority boost just after process finished executing (has implications on the ordering of processes)
+    // 5 -- process expended its time allotment
     while (countNodes(*pId) > 0)
     {
+        printf("\n\nTIME CHECK!\n");
+        printf("Current time: %d\n", *time);
+        printf("Next priority time: %d\n", next_priority_time);
         if (*pIOList != NULL)
         {
             *pIOList = processIO(*pIOList, *curr_time);
         }
 
-        // if ((idleTime = getIdleTime(pCurr, time)) > 0)
-        // {
-        //     time += idleTime;
-        // }
-
         if (pCurr->ready == 1)
         {
-
             if (pCurr->pTime == NULL)
             {
                 pCurr->pTime = createTimeNode(*time, 0);
@@ -542,31 +570,63 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
             inside_time = 0;
             curr_id = pCurr->id;
 
-            while (inside_time < pCurr->io_interval && pCurr != NULL && pCurr->id == curr_id)
+            printf("\n\n**********\n");
+            printf("INITIAL STATS OF ID: %d\n", pCurr->id);
+            printf("P%d execution time: %d\n", pCurr->id, pCurr->execution_time);
+            printf("P%d time allotment: %d\n", pCurr->id, pCurr->time_allotment);
+
+            while (pCurr != NULL && pCurr->id == curr_id && (pCurr->io_interval == 0 || inside_time < pCurr->io_interval))
             {
+
                 *time += 1;
                 inside_time += 1;
                 pCurr->execution_time -= 1;
                 pCurr->time_allotment += 1;
 
+                printf("\nCURRENT STATS \n");
+                printf("P%d execution time: %d\n", pCurr->id, pCurr->execution_time);
+                printf("P%d time allotment: %d\n", pCurr->id, pCurr->time_allotment);
+
                 if (pCurr->execution_time == 0)
                 {
+                    printf("This process is finished! \n");
+
                     pCurrTime->end = *time;
                     pCurr->turnaround_time += pCurr->wait_time + (pCurrTime->end - pCurrTime->start);
                     display(pCurr);
                     *pId = freeNode(*pId, pCurr->id);
                     pCurr = *pId;
+
+                    if (*time > priorityBoost * interval_num && pCurr != NULL)
+                    {
+                        return 4;
+                    }
                 }
 
                 else if (pCurr->time_allotment == time_quantum)
                 {
                     //Move down queue
                     pCurrTime->end = *time;
-                    return 3;
+                    printf("\n************ \n");
+                    printf("Reached max time allotment! \n");
+                    printf("P%d end time: %d\n", pCurr->id, pCurrTime->end);
+
+                    if (*time >= (priorityBoost * interval_num))
+                    {
+                        break;
+                    }
+
+                    else
+                    {
+                        return 5;
+                    }
                 }
 
                 else if (inside_time == pCurr->io_interval)
                 {
+                    printf("\n************ \n");
+                    printf("Time for IO! \n");
+
                     pCurrTime->end = *time;
                     int fulfill_time = pCurr->io_length + *time;
 
@@ -576,21 +636,47 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
 
                     pCurr->ready = 0;
 
+                    printf("Created IO Node with following details: \n");
+                    printf("Fulfill time: %d \n", pIONode->fulfill_time);
+                    printf("Related to process: P%d\n", pIONode->pProcess->id);
+
                     *pId = reorderFrontQueue(*pId, pIONode->fulfill_time);
+                    printf("Next ID after reordering: P%d\n", (*pId)->id);
                     pCurr = *pId;
                 }
+
+                else if (*time == next_priority_time && next_priority_time != -1)
+                {
+                    printf("\n************ \n");
+                    printf("A process in higher priority queue is ready! \n");
+
+                    pCurrTime->end = *time;
+
+                    return 3;
+                }
+            }
+
+            if (pCurr == NULL)
+            {
+                return 0;
             }
 
             idleTime = getIdleTime(pCurr, *time);
 
-            if (idleTime > 0)
+            if (pCurr->ready == 0 || idleTime > 0)
             {
+                printf("\n************ \n");
+                printf("There is idle time!");
                 *time = *time - idleTime; //need to reset time para magstart again dun sa time after last process
                 return 2;
             }
 
             if (*time > priorityBoost * interval_num)
             {
+                printf("\n************ \n");
+                printf("Priority Boost Time!\n");
+                printf("Current time: %d\n", *time);
+                printf("Priority boost intervals: %d\n", priorityBoost);
                 return 1;
             }
         }
@@ -633,8 +719,54 @@ int findProcessQueue(Queue *priorityQueue, ListNode *pId, int num_queues)
     return 0;
 }
 
+IONode *getNearestFulfill(IONode *pFirst, Queue *priorityQueue, int num_queues)
+{
+    int current_shortest_queue = -1, queue_checked;
+    ListNode *pCurr = NULL;
+    int shortest_fulfill = -1;
+
+    while (pFirst != NULL) //Find IO with shortest fulfill_time
+    {
+        if (shortest_fulfill == -1)
+        {
+            shortest_fulfill = pFirst->fulfill_time;
+            pCurr = pFirst->pProcess;
+            current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
+        }
+        else
+        {
+            if (pFirst->fulfill_time < shortest_fulfill)
+            {
+                shortest_fulfill = pFirst->fulfill_time;
+                pCurr = pFirst->pProcess;
+                current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
+            }
+            else if (pFirst->fulfill_time == shortest_fulfill)
+            {
+                //check for process in higher priority queue
+
+                current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
+                queue_checked = findProcessQueue(priorityQueue, pFirst->pProcess, num_queues);
+
+                if (queue_checked < current_shortest_queue)
+                {
+                    current_shortest_queue = queue_checked;
+                    shortest_fulfill = pFirst->fulfill_time;
+                    pCurr = pFirst->pProcess;
+                }
+            }
+        }
+        pFirst = pFirst->pNext;
+    }
+
+    return pFirst;
+}
+
 int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, IONode **pIOList, int num_queues, int *curr_time)
 {
+
+    printf("INSIDE CHECKQUEUES! \n\n");
+
     int i, idle_time, shortest_fulfill = -1, curr_queue_temp;
     int current_shortest_queue = -1, queue_checked;
     ListNode *pCurr = NULL, *pTemp;
@@ -642,6 +774,16 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
 
     for (i = 0; i < num_queues; i++)
     {
+
+        if ((priorityQueue + i)->pCurr == NULL)
+        {
+            continue;
+        }
+
+        printf("ID OF QUEUE %d IS ID: %d\n", i, ((priorityQueue) + i)->pCurr->id);
+        printf("Arrival Time of ID %d: %d\n", ((priorityQueue) + i)->pCurr->id, ((priorityQueue) + i)->pCurr->arrival_time);
+        printf("Curr time is: %d\n", *curr_time);
+
         if (((priorityQueue) + i)->pCurr->ready == 1)
         { //check if ready
             if (((priorityQueue) + i)->pCurr->arrival_time <= *curr_time)
@@ -649,43 +791,52 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
 
                 *pCurrList = ((priorityQueue) + i)->pCurr; //set pCurrList and curr_queue to highest priority queue with arrived process
                 *curr_queue = i;
-                return 0;
-            }
-        }
-    }
-    while (pIOCurr != NULL) //Find IO with shortest fulfill_time
-    {
-        if (shortest_fulfill == -1)
-        {
-            shortest_fulfill = pIOCurr->fulfill_time;
-            pCurr = pIOCurr->pProcess;
-            current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
-        }
-        else
-        {
-            if (pIOCurr->fulfill_time < shortest_fulfill)
-            {
-                shortest_fulfill = pIOCurr->fulfill_time;
-                pCurr = pIOCurr->pProcess;
-                current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
-            }
-            else if (pIOCurr->fulfill_time == shortest_fulfill)
-            {
-                //check for process in higher priority queue
 
-                current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
-                queue_checked = findProcessQueue(priorityQueue, pIOCurr->pProcess, num_queues);
-
-                if (queue_checked < current_shortest_queue)
-                {
-                    current_shortest_queue = queue_checked;
-                    shortest_fulfill = pIOCurr->fulfill_time;
-                    pCurr = pIOCurr->pProcess;
-                }
+                printf("Selected queue is queue #%d\n", *curr_queue);
+                printf("\nDONE WITH CHECKQUEUES\n");
+                printf("*******\n");
+                return 0; //Found ready process that has already arrived
             }
         }
-        pIOCurr = pIOCurr->pNext;
+
+        printf("Keep searching....\n\n");
     }
+
+    // while (pIOCurr != NULL) //Find IO with shortest fulfill_time
+    // {
+    //     if (shortest_fulfill == -1)
+    //     {
+    //         shortest_fulfill = pIOCurr->fulfill_time;
+    //         pCurr = pIOCurr->pProcess;
+    //         current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
+    //     }
+    //     else
+    //     {
+    //         if (pIOCurr->fulfill_time < shortest_fulfill)
+    //         {
+    //             shortest_fulfill = pIOCurr->fulfill_time;
+    //             pCurr = pIOCurr->pProcess;
+    //             current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
+    //         }
+    //         else if (pIOCurr->fulfill_time == shortest_fulfill)
+    //         {
+    //             //check for process in higher priority queue
+
+    //             current_shortest_queue = findProcessQueue(priorityQueue, pCurr, num_queues);
+    //             queue_checked = findProcessQueue(priorityQueue, pIOCurr->pProcess, num_queues);
+
+    //             if (queue_checked < current_shortest_queue)
+    //             {
+    //                 current_shortest_queue = queue_checked;
+    //                 shortest_fulfill = pIOCurr->fulfill_time;
+    //                 pCurr = pIOCurr->pProcess;
+    //             }
+    //         }
+    //     }
+    //     pIOCurr = pIOCurr->pNext;
+    // }
+
+    pIOCurr = getNearestFulfill(pIOCurr, priorityQueue, num_queues);
 
     //Check if the next IO is shorter than arrival time of next process
     if ((priorityQueue + 0)->pCurr != NULL)
@@ -730,9 +881,79 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
             *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
         }
     }
-
     // all queues are empty
-    return 0;
+    return 1;
+}
+
+//Gets closest arrival/fulfill_time from queue higher than curr_queue
+int getNextPriorityTime(Queue *priorityQueue, IONode *pFirst, int curr_queue, int curr_time)
+{
+    printf("\n\n************\n");
+    printf("GETTING NEXT PRIORITY\n");
+
+    int min_time = -1;
+    IONode *pTemp = pFirst;
+
+    for (int i = 0; i < curr_queue; i++)
+    {
+
+        if ((priorityQueue + i)->pCurr == NULL)
+        {
+            continue;
+        }
+
+        printf("ID OF QUEUE %d IS ID: %d\n", i, ((priorityQueue) + i)->pCurr->id);
+        printf("Arrival Time of ID %d: %d\n", ((priorityQueue) + i)->pCurr->id, ((priorityQueue) + i)->pCurr->arrival_time);
+        printf("Current min is: %d\n\n", min_time);
+
+        if (min_time == -1)
+        {
+            if ((priorityQueue + i)->pCurr->arrival_time > curr_time)
+            {
+                min_time = (priorityQueue + i)->pCurr->arrival_time;
+            }
+        }
+
+        else if ((priorityQueue + i)->pCurr->arrival_time < min_time && (priorityQueue + i)->pCurr->arrival_time > curr_time)
+        {
+            min_time = (priorityQueue + i)->pCurr->arrival_time;
+        }
+    }
+
+    while (pTemp != NULL)
+    {
+        printf("P%d PROCESS QUEUE: %d\n", pTemp->pProcess->id, pTemp->pProcess->queue);
+        printf("this node's fulfill time: %d\n", pTemp->fulfill_time);
+
+        if (min_time == -1)
+        {
+            if (pTemp->fulfill_time > curr_time && pTemp->pProcess->queue < curr_queue)
+            {
+                min_time = pTemp->fulfill_time;
+            }
+        }
+
+        else if (pTemp->fulfill_time < min_time && pTemp->fulfill_time > curr_time && pTemp->pProcess->queue < curr_queue)
+        {
+            min_time = pTemp->fulfill_time;
+        }
+
+        pTemp = pTemp->pNext;
+    }
+
+    printf("\nResults:\n");
+    printf("CURR TIME: %d\n", curr_time);
+    printf("MIN TIME: %d\n", min_time);
+
+    if (min_time < curr_time)
+    {
+        min_time = -1;
+    }
+
+    printf("DONE GETTING NEXT PRIORITY\n");
+    printf("************\n\n");
+
+    return min_time;
 }
 
 void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost)
@@ -740,9 +961,10 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
     int processing = 1; //condition for continuing while loop
     int curr_queue = 0;
     int robin_result = 0;
-    int interval_num = 0; //how many intervals of priority boost have passed
-    int curr_time = 0;    //pass as pointer to robin function
-    int wait_time = 0;    //pass as pointer to robin function
+    int interval_num = 1;        //how many intervals of priority boost have passed
+    int curr_time = 0;           //pass as pointer to robin function
+    int wait_time = 0;           //pass as pointer to robin function
+    int next_priority_time = -1; //pass to robin function
     int check_queue_return;
     IONode *pIOList = NULL; //pass as pointer to robin function
     ListNode *pCurrList = NULL;
@@ -750,17 +972,23 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
     addListNodeToQueue(priorityQueue + 0, pId);
 
     pCurrList = (priorityQueue + 0)->pCurr;
+    curr_time = pCurrList->arrival_time;
 
     while (processing)
     {
+        printf("\n\n************\n");
+        printf("curr queue: %d\n", curr_queue);
         //fix robin(?) account for prioritizing arritval time over process na bumalik from I/O (oks na)
 
-        robin_result = robin(&pCurrList, &pIOList, &curr_time, &wait_time, (priorityQueue + curr_queue)->timeQuantum, priorityBoost, interval_num);
+        robin_result = robin(&pCurrList, &pIOList, &curr_time, &wait_time, (priorityQueue + curr_queue)->timeQuantum, priorityBoost, interval_num, next_priority_time);
 
         switch (robin_result)
         {
         case 0:
-        { //completed all processes in current queue, check other queues
+        {
+            printf("\n\n*********\n");
+            printf("CASE 0! \n");
+            //completed all processes in current queue, check other queues
             int i = 0;
             while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
             {
@@ -774,7 +1002,16 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
         break;
 
         case 1: //time for priority boost
+            printf("\n\n*********\n");
+            printf("CASE 1! \n");
+            pCurrList = moveProcessToBack(pCurrList);
+            (priorityQueue + curr_queue)->pCurr = pCurrList;
+
+            //PROBLEM: nammove to back kapag sinundan yung isang process na kakatapos lang
+
             boost(priorityQueue, num_queues, curr_time);
+
+            interval_num++;
 
             //if currtime > PRIORITY BOOST * interval_num
             //priority boost
@@ -786,24 +1023,78 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
 
         case 2:
         { //idle time exists, check other queues
+            printf("\n\n*********\n");
+            printf("CASE 2! \n");
         }
         break;
 
-        default:{ //current process has to move to lower queue
+        case 3:
+        {
+            printf("\n\n*********\n");
+            printf("CASE 3! \n");
+
+            printf("Moving P%d to back\n", (pCurrList)->id);
+            pCurrList = moveProcessToBack(pCurrList);
+            printf("Front ID after moving to back: P%d\n", (pCurrList)->id);
+
+            (priorityQueue + curr_queue)->pCurr = pCurrList;
+            //higher priority process is ready
+            //do nothing
+            break;
+        }
+
+        case 4:
+        {
+            //boost but without moving curr to back
+            printf("\n\n*********\n");
+            printf("CASE 4! \n");
+            (priorityQueue + curr_queue)->pCurr = pCurrList;
+            boost(priorityQueue, num_queues, curr_time);
+
+            interval_num++;
+            break;
+        }
+
+        default:
+        { //current process has to move to lower queue
             ListNode *pCurr = pCurrList;
+            printf("\n\n*********\n");
+            printf("CASE 5! \n");
 
             if (curr_queue != num_queues - 1) //means it's not on the last level
             {
-                ListNode *pDest = (priorityQueue + curr_queue + 1)->pCurr;
-                ListNode *pNext = moveNodeToQueue(&pDest, pCurr, curr_time, 2);
-                (priorityQueue + curr_queue)->pCurr = pNext;
+                pCurr->time_allotment = 0;
+                if ((priorityQueue + curr_queue + 1)->pCurr == NULL)
+                {
+                    printf("PCURRLIST ID: %d\n", pCurrList->id);
+                    ListNode *pNext = pCurrList->pNext;
+                    pCurr->pNext = NULL;
+                    pCurr->queue = curr_queue + 1;
+                    (priorityQueue + curr_queue + 1)->pCurr = pCurr;
+                    (priorityQueue + curr_queue)->pCurr = pNext;
+                }
+
+                else
+                {
+                    printf("PCURRLIST ID: %d\n", pCurrList->id);
+                    ListNode *pDest = (priorityQueue + curr_queue + 1)->pCurr;
+                    ListNode *pNext = moveNodeToQueue(&pDest, pCurr, curr_time, 2);
+                    (priorityQueue + curr_queue)->pCurr = pNext;
+                }
             }
+
+            printf("CURR QUEUE: %d\n", curr_queue);
+            // printf("QUEUE %d's FIRST ID: %d\n", curr_queue, (priorityQueue + curr_queue)->pCurr->id);
+            printf("QUEUE %d's FIRST ID: %d\n", curr_queue + 1, (priorityQueue + curr_queue + 1)->pCurr->id);
         }
         }
 
+        printf("\nDONE WITH CASES!\n");
+        printf("*********\n\n");
+
         //check if all queues are empty, if empty, processing = 0;
         int i = 0;
-        while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
+        while ((priorityQueue + i)->pCurr == NULL && i < num_queues)
         {
             i++;
         }
@@ -814,6 +1105,15 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
 
         //make a function here that checks all queues from high priority to low, then get corresponding process list (if going the ready route, then check lang yung ready state ng mga nodes)
         check_queue_return = checkQueues(priorityQueue, &pCurrList, &curr_queue, &pIOList, num_queues, &curr_time);
+
+        switch (check_queue_return)
+        {
+        case 0:
+            next_priority_time = getNextPriorityTime(priorityQueue, pIOList, curr_queue, curr_time);
+            break;
+        default:
+            processing = 0;
+        }
     }
 }
 
@@ -849,18 +1149,39 @@ void insertionSort(ListNode **head)
     {
         // Store next for next iteration
         ListNode *next = a->pNext;
-
-        // insert current in sorted linked list
-        // sortedInsert(s, a);
         if (s == NULL || s->arrival_time > a->arrival_time)
         {
             a->pNext = s;
             s = a;
         }
+
+        else if (s->arrival_time == a->arrival_time)
+        {
+            if (s->id > a->id)
+            {
+                a->pNext = s;
+                s = a;
+            }
+
+            else //Locate node before point of insertion (ID BASED)
+            {
+                ListNode *current = s;
+
+                while (current->pNext &&
+                       current->pNext->id < a->id)
+                {
+                    current = current->pNext;
+                }
+                a->pNext = current->pNext;
+                current->pNext = a;
+            }
+        }
+
         else
         {
             /* Locate the node before the point of insertion */
             ListNode *current = s;
+
             while (current->pNext &&
                    current->pNext->arrival_time < a->arrival_time)
             {
@@ -928,6 +1249,7 @@ int main()
         fscanf(fptr, "%d", &priorityQueues[i].priority);
         fscanf(fptr, "%d", &priorityQueues[i].queueID);
         fscanf(fptr, "%d", &priorityQueues[i].timeQuantum);
+        priorityQueues[i].pCurr = NULL;
     }
 
     selectionSort(priorityQueues, X);
@@ -988,6 +1310,13 @@ int main()
     }
 
     insertionSort(&pId);
+
+    ListNode *pIter = pId;
+    while (pIter != NULL)
+    {
+        printf("id: %d\n", pIter->id);
+        pIter = pIter->pNext;
+    }
 
     mlfq(priorityQueues, X, pId, S);
 
