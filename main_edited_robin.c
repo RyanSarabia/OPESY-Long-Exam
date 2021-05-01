@@ -774,7 +774,6 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
 
     for (i = 0; i < num_queues; i++)
     {
-
         if ((priorityQueue + i)->pCurr == NULL)
         {
             continue;
@@ -882,6 +881,7 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
         }
     }
     // all queues are empty
+    printf("ENDING");
     return 1;
 }
 
@@ -893,8 +893,8 @@ int getNextPriorityTime(Queue *priorityQueue, IONode *pFirst, int curr_queue, in
 
     int min_time = -1;
     IONode *pTemp = pFirst;
-
-    for (int i = 0; i < curr_queue; i++)
+    int i;
+    for (i = 0; i < curr_queue; i++)
     {
 
         if ((priorityQueue + i)->pCurr == NULL)
@@ -1080,6 +1080,8 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
                     ListNode *pDest = (priorityQueue + curr_queue + 1)->pCurr;
                     ListNode *pNext = moveNodeToQueue(&pDest, pCurr, curr_time, 2);
                     (priorityQueue + curr_queue)->pCurr = pNext;
+                    if ((priorityQueue + curr_queue)->pCurr != NULL)
+                        printf("(priorityQueue + curr_queue)->pCurr: %d\n", (priorityQueue + curr_queue)->pCurr->id);
                 }
             }
 
@@ -1091,17 +1093,6 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
 
         printf("\nDONE WITH CASES!\n");
         printf("*********\n\n");
-
-        //check if all queues are empty, if empty, processing = 0;
-        int i = 0;
-        while ((priorityQueue + i)->pCurr == NULL && i < num_queues)
-        {
-            i++;
-        }
-        if (i == num_queues)
-        {
-            processing = 0;
-        }
 
         //make a function here that checks all queues from high priority to low, then get corresponding process list (if going the ready route, then check lang yung ready state ng mga nodes)
         check_queue_return = checkQueues(priorityQueue, &pCurrList, &curr_queue, &pIOList, num_queues, &curr_time);
@@ -1147,6 +1138,8 @@ void insertionSort(ListNode **head)
     // node to sorted
     while (a)
     {
+        if (s != NULL)
+            printf("S ARRIVAL: %d\n", s->arrival_time);
         // Store next for next iteration
         ListNode *next = a->pNext;
         if (s == NULL || s->arrival_time > a->arrival_time)
@@ -1167,8 +1160,7 @@ void insertionSort(ListNode **head)
             {
                 ListNode *current = s;
 
-                while (current->pNext &&
-                       current->pNext->id < a->id)
+                while (current->pNext && current->pNext->id < a->id && current->pNext->arrival_time <= a->arrival_time)
                 {
                     current = current->pNext;
                 }
@@ -1182,8 +1174,7 @@ void insertionSort(ListNode **head)
             /* Locate the node before the point of insertion */
             ListNode *current = s;
 
-            while (current->pNext &&
-                   current->pNext->arrival_time < a->arrival_time)
+            while (current->pNext && current->pNext->arrival_time < a->arrival_time)
             {
                 current = current->pNext;
             }
