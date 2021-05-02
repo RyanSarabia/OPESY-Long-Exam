@@ -621,6 +621,27 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
                     printf("Reached max time allotment! \n");
                     printf("P%d end time: %d\n", pCurr->id, pCurrTime->end);
 
+                    if (inside_time == pCurr->io_interval)
+                    {
+                        printf("\n************ \n");
+                        printf("Time for IO! \n");
+
+                        pCurrTime->end = *time;
+                        int fulfill_time = pCurr->io_length + *time;
+
+                        //Create IO node
+                        pIONode = createIONode(fulfill_time, pCurr);
+                        *pIOList = addIONode(*pIOList, pIONode);
+
+                        prev_end = pCurrTime->end;
+                        pCurrTime->pNext = createTimeNode(*time, 0, -1);
+                        pCurrTime = pCurrTime->pNext;
+                        pCurrTime->end = fulfill_time;
+                        pCurr->wait_time += *time - prev_end;
+
+                        pCurr->ready = 0;
+                    }
+
                     if (*time >= (priorityBoost * interval_num))
                     {
                         break;
