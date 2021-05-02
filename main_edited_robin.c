@@ -525,7 +525,7 @@ void display(ListNode *pId)
     printf("**********************\n\n");
 }
 
-int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_time, int time_quantum, int priorityBoost, int interval_num, int next_priority_time)
+int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_time, int time_quantum, int priorityBoost, int interval_num, int next_priority_time, float *average_time)
 {
     int *wait_time = total_waiting_time;
     int prev_end;
@@ -603,6 +603,7 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
 
                     pCurrTime->end = *time;
                     pCurr->turnaround_time = *curr_time - pCurr->arrival_time;
+                    *average_time += pCurr->wait_time;
                     display(pCurr);
                     *pId = freeNode(*pId, pCurr->id);
                     pCurr = *pId;
@@ -996,7 +997,7 @@ int getNextPriorityTime(Queue *priorityQueue, IONode *pFirst, int curr_queue, in
     return min_time;
 }
 
-void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost)
+void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost, float *average_time)
 {
     int processing = 1; //condition for continuing while loop
     int curr_queue = 0;
@@ -1020,7 +1021,7 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
         printf("curr queue: %d\n", curr_queue);
         //fix robin(?) account for prioritizing arritval time over process na bumalik from I/O (oks na)
 
-        robin_result = robin(&pCurrList, &pIOList, &curr_time, &wait_time, (priorityQueue + curr_queue)->timeQuantum, priorityBoost, interval_num, next_priority_time);
+        robin_result = robin(&pCurrList, &pIOList, &curr_time, &wait_time, (priorityQueue + curr_queue)->timeQuantum, priorityBoost, interval_num, next_priority_time, average_time);
 
         switch (robin_result)
         {
@@ -1347,10 +1348,11 @@ int main()
         printf("id: %d\n", pIter->id);
         pIter = pIter->pNext;
     }
+    float average_time = 0;
 
-    mlfq(priorityQueues, X, pId, S);
+    mlfq(priorityQueues, X, pId, S, &average_time);
 
-    //printf("Average waiting time: %.2f\n\n", robin_time / (Y * 1.0));
+    printf("\nAverage waiting time: %.2f\n\n", average_time / (Y * 1.0));
 
     fclose(fptr);
 }
