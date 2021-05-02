@@ -389,7 +389,7 @@ IONode *processIO(IONode *pFirst, int curr_time)
 
     while (pCurr != NULL)
     {
-        if (pCurr->fulfill_time >= curr_time)
+        if (pCurr->fulfill_time <= curr_time)
         {
 
             pProcess = pCurr->pProcess;
@@ -450,6 +450,7 @@ void boost(Queue *priorityQueue, int num_queues, int curr_time)
         {
 
             printf("Current process to check: P%d\n", pCurr->id);
+            printf("IS READY? %d\n", pCurr->ready);
 
             if (pCurr->ready)
             {
@@ -480,6 +481,7 @@ void boost(Queue *priorityQueue, int num_queues, int curr_time)
             else
             {
                 isNodeFront = 0;
+                pTemp = pCurr->pNext;
             }
 
             pCurr = pTemp;
@@ -1049,6 +1051,10 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
             (priorityQueue + curr_queue)->pCurr = pCurrList;
 
             //PROBLEM: nammove to back kapag sinundan yung isang process na kakatapos lang
+            if (pIOList != NULL)
+            {
+                pIOList = processIO(pIOList, curr_time);
+            }
 
             boost(priorityQueue, num_queues, curr_time);
 
@@ -1079,6 +1085,7 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
             printf("Front ID after moving to back: P%d\n", (pCurrList)->id);
 
             (priorityQueue + curr_queue)->pCurr = pCurrList;
+
             //higher priority process is ready
             //do nothing
             break;
@@ -1090,6 +1097,11 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
             printf("\n\n*********\n");
             printf("CASE 4! \n");
             (priorityQueue + curr_queue)->pCurr = pCurrList;
+
+            if (pIOList != NULL)
+            {
+                pIOList = processIO(pIOList, curr_time);
+            }
             boost(priorityQueue, num_queues, curr_time);
 
             interval_num++;
@@ -1134,6 +1146,11 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
 
         printf("\nDONE WITH CASES!\n");
         printf("*********\n\n");
+
+        if (pIOList != NULL)
+        {
+            pIOList = processIO(pIOList, curr_time);
+        }
 
         //make a function here that checks all queues from high priority to low, then get corresponding process list (if going the ready route, then check lang yung ready state ng mga nodes)
         check_queue_return = checkQueues(priorityQueue, &pCurrList, &curr_queue, &pIOList, num_queues, &curr_time);
