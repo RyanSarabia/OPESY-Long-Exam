@@ -602,7 +602,7 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
                     printf("This process is finished! \n");
 
                     pCurrTime->end = *time;
-                    pCurr->turnaround_time += pCurr->wait_time + (pCurrTime->end - pCurrTime->start);
+                    pCurr->turnaround_time = *curr_time - pCurr->arrival_time;
                     display(pCurr);
                     *pId = freeNode(*pId, pCurr->id);
                     pCurr = *pId;
@@ -856,8 +856,10 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
     //Check if the next IO is shorter than arrival time of next process
     if ((priorityQueue + 0)->pCurr != NULL)
     {
+
         if (pCurr != NULL && current_shortest_queue != -1)
         { //Check if there are processes in IO
+
             if (current_shortest_queue == 0)
             { //if shortest IO is at highest priority queue
                 if (shortest_fulfill <= (priorityQueue + 0)->pCurr->arrival_time)
@@ -891,6 +893,7 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
         }
         else
         {
+
             *pCurrList = ((priorityQueue) + 0)->pCurr;
             *curr_queue = 0;
             *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
