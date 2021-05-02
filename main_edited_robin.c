@@ -16,6 +16,7 @@ struct timeNodeTag
 {
     int start;
     int end;
+    int queue; //-1 means it is an IO Node
     TimeNode *pNext;
 };
 
@@ -316,7 +317,7 @@ TimeNode *initializeTimeNode()
     return NULL;
 }
 
-TimeNode *createTimeNode(int start, int end)
+TimeNode *createTimeNode(int start, int end, int queue)
 {
     TimeNode *pTemp;
 
@@ -327,6 +328,7 @@ TimeNode *createTimeNode(int start, int end)
     }
     pTemp->start = start;
     pTemp->end = end;
+    pTemp->queue = queue;
     pTemp->pNext = NULL;
     return pTemp;
 }
@@ -505,8 +507,16 @@ void display(ListNode *pId)
     TimeNode *pCurrTime = pId->pTime;
     do
     {
-        printf("Start time: %d  ", pCurrTime->start);
-        printf("End time: %d\n", pCurrTime->end);
+        if (pCurrTime->queue >= 0)
+        {
+            printf("Q[%d] Start time: %d  ", pCurrTime->queue, pCurrTime->start);
+            printf("End time: %d\n", pCurrTime->end);
+        }
+        else
+        {
+            printf("[IO] Start time: %d  ", pCurrTime->start);
+            printf("End time: %d\n", pCurrTime->end);
+        }
         pCurrTime = pCurrTime->pNext;
     } while (pCurrTime);
 
@@ -551,7 +561,7 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
         {
             if (pCurr->pTime == NULL)
             {
-                pCurr->pTime = createTimeNode(*time, 0);
+                pCurr->pTime = createTimeNode(*time, 0, pCurr->queue);
                 pCurrTime = pCurr->pTime;
                 pCurrTime->pNext = NULL;
                 pCurr->wait_time = *time - pCurr->arrival_time;
@@ -561,7 +571,7 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
             {
                 pCurrTime = getLastTimeNode(pCurr->pTime);
                 prev_end = pCurrTime->end;
-                pCurrTime->pNext = createTimeNode(*time, 0);
+                pCurrTime->pNext = createTimeNode(*time, 0, pCurr->queue);
                 pCurrTime = pCurrTime->pNext;
                 pCurr->wait_time += *time - prev_end;
             }
@@ -633,6 +643,12 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
                     //Create IO node
                     pIONode = createIONode(fulfill_time, pCurr);
                     *pIOList = addIONode(*pIOList, pIONode);
+
+                    prev_end = pCurrTime->end;
+                    pCurrTime->pNext = createTimeNode(*time, 0, -1);
+                    pCurrTime = pCurrTime->pNext;
+                    pCurrTime->end = fulfill_time;
+                    pCurr->wait_time += *time - prev_end;
 
                     pCurr->ready = 0;
 
@@ -989,6 +1005,7 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
             printf("\n\n*********\n");
             printf("CASE 0! \n");
             //completed all processes in current queue, check other queues
+            (priorityQueue + curr_queue)->pCurr = NULL;
             int i = 0;
             while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
             {
@@ -1087,7 +1104,7 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
 
             printf("CURR QUEUE: %d\n", curr_queue);
             // printf("QUEUE %d's FIRST ID: %d\n", curr_queue, (priorityQueue + curr_queue)->pCurr->id);
-            printf("QUEUE %d's FIRST ID: %d\n", curr_queue + 1, (priorityQueue + curr_queue + 1)->pCurr->id);
+            // printf("QUEUE %d's FIRST ID: %d\n", curr_queue + 1, (priorityQueue + curr_queue + 1)->pCurr->id);
         }
         }
 
