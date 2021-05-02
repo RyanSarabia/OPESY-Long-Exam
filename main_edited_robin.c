@@ -551,6 +551,7 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
         {
             if (pCurr->pTime == NULL)
             {
+
                 pCurr->pTime = createTimeNode(*time, 0);
                 pCurrTime = pCurr->pTime;
                 pCurrTime->pNext = NULL;
@@ -592,7 +593,7 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
                     printf("This process is finished! \n");
 
                     pCurrTime->end = *time;
-                    pCurr->turnaround_time += pCurr->wait_time + (pCurrTime->end - pCurrTime->start);
+                    pCurr->turnaround_time = *curr_time - pCurr->arrival_time;
                     display(pCurr);
                     *pId = freeNode(*pId, pCurr->id);
                     pCurr = *pId;
@@ -840,8 +841,10 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
     //Check if the next IO is shorter than arrival time of next process
     if ((priorityQueue + 0)->pCurr != NULL)
     {
+
         if (pCurr != NULL && current_shortest_queue != -1)
         { //Check if there are processes in IO
+
             if (current_shortest_queue == 0)
             { //if shortest IO is at highest priority queue
                 if (shortest_fulfill <= (priorityQueue + 0)->pCurr->arrival_time)
@@ -875,6 +878,7 @@ int checkQueues(Queue *priorityQueue, ListNode **pCurrList, int *curr_queue, ION
         }
         else
         {
+
             *pCurrList = ((priorityQueue) + 0)->pCurr;
             *curr_queue = 0;
             *curr_time = (priorityQueue + 0)->pCurr->arrival_time; //skip to shortest arrival_time
@@ -989,15 +993,15 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
             printf("\n\n*********\n");
             printf("CASE 0! \n");
             //completed all processes in current queue, check other queues
-            int i = 0;
-            while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
-            {
-                i++;
-            }
-            if (i < num_queues)
-            {
-                curr_queue = i;
-            }
+            // int i = 0;
+            // while ((priorityQueue + i)->pCurr != NULL && i < num_queues)
+            // {
+            //     i++;
+            // }
+            // if (i < num_queues)
+            // {
+            //     curr_queue = i;
+            // }
         }
         break;
 
