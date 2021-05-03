@@ -494,7 +494,7 @@ void boost(Queue *priorityQueue, int num_queues, int curr_time)
 
 // Scheduling functions
 
-void display(ListNode *pId)
+void display(ListNode *pId, Queue *priorityQueue)
 {
     printf("P[%d]\n", pId->id);
 
@@ -503,7 +503,7 @@ void display(ListNode *pId)
     {
         if (pCurrTime->queue >= 0)
         {
-            printf("Q[%d] Start time: %d  ", pCurrTime->queue, pCurrTime->start);
+            printf("Q[%d] Start time: %d  ", (priorityQueue + pCurrTime->queue)->queueID, pCurrTime->start);
             printf("End time: %d\n", pCurrTime->end);
         }
         else
@@ -519,7 +519,7 @@ void display(ListNode *pId)
     printf("**********************\n\n");
 }
 
-int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_time, int time_quantum, int priorityBoost, int interval_num, int next_priority_time, float *average_time)
+int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_time, int time_quantum, int priorityBoost, int interval_num, int next_priority_time, float *average_time, Queue *priorityQueue)
 {
     int *wait_time = total_waiting_time;
     int prev_end;
@@ -583,7 +583,7 @@ int robin(ListNode **pId, IONode **pIOList, int *curr_time, int *total_waiting_t
                     pCurrTime->end = *time;
                     pCurr->turnaround_time = *curr_time - pCurr->arrival_time;
                     *average_time += pCurr->wait_time;
-                    display(pCurr);
+                    display(pCurr, priorityQueue);
                     *pId = freeNode(*pId, pCurr->id);
                     pCurr = *pId;
 
@@ -918,7 +918,7 @@ void mlfq(Queue *priorityQueue, int num_queues, ListNode *pId, int priorityBoost
     while (processing)
     {
 
-        robin_result = robin(&pCurrList, &pIOList, &curr_time, &wait_time, (priorityQueue + curr_queue)->timeQuantum, priorityBoost, interval_num, next_priority_time, average_time);
+        robin_result = robin(&pCurrList, &pIOList, &curr_time, &wait_time, (priorityQueue + curr_queue)->timeQuantum, priorityBoost, interval_num, next_priority_time, average_time, priorityQueue);
 
         switch (robin_result)
         {
@@ -1165,8 +1165,8 @@ int main()
 
     for (i = 0; i < X; i++)
     {
-        fscanf(fptr, "%d", &priorityQueues[i].priority);
         fscanf(fptr, "%d", &priorityQueues[i].queueID);
+        fscanf(fptr, "%d", &priorityQueues[i].priority);
         fscanf(fptr, "%d", &priorityQueues[i].timeQuantum);
         priorityQueues[i].pCurr = NULL;
     }
