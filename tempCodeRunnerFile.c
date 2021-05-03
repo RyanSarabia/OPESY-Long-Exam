@@ -1,20 +1,2 @@
-        // else if (s->arrival_time == a->arrival_time)
-        // {
-        //     if (s->id > a->id)
-        //     {
-        //         a->pNext = s;
-        //         s = a;
-        //     }
-
-        //     else //Locate node before point of insertion (ID BASED)
-        //     {
-        //         ListNode *current = s;
-
-        //         while (current->pNext && current->pNext->id < a->id)
-        //         {
-        //             current = current->pNext;
-        //         }
-        //         a->pNext = current->pNext;
-        //         current->pNext = a;
-        //     }
-        // }
+t (if going the ready route, then check lang yung ready state ng mga nodes)
+        check_queue_return = checkQueues(priorityQueue, &pCurrList, &curr_queue, &pIOList, num_queues, &curr_time);
